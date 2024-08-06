@@ -8,37 +8,34 @@ import math
 # from silence_tensorflow import silence_tensorflow
 # silence_tensorflow()
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'  # or any {'0', '1', '2'}
 # Setup GPU for training
 
-
-import tensorflow.compat.v1 as tf # type: ignore
-tf.disable_v2_behavior()
-import tensorflow as tf1
+# import tensorflow.compat.v1 as tf # type: ignore
+# tf.disable_v2_behavior()
+import tensorflow as tf
 # import deepxde as dde
+# import tensorflow as tff
 # import tensorflow_estimator as estimator
 
-import wandb # type: ignore
+import wandb
 wandb.require("core")
-wandb.init()
+# wandb.init()
 # wandb.init(config=tf.flags.FLAGS, sync_tensorboard=True)
 
 from models import *
 from utils import *
 
 import time
-time_var = time.strftime('%Y%m%d-%H%M%S')
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 np.random.seed(1111)
 tf.set_random_seed(1111)
 
-
-tf.get_logger().setLevel('NONE')
+tf.get_logger().setLevel(3)
 tf.autograph.set_verbosity(3)
 tf.logging.set_verbosity(tf.logging.ERROR)
-tf.logging.set_verbosity(tf.logging.ERROR)
-# tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
 
@@ -101,7 +98,7 @@ if __name__ == "__main__":
 
     # Add some boundary points into the collocation point set
     XYT_c = np.concatenate((XYT_c, HOLE[::4, :], LF[::5, :], RT[::5, 0:3], UP[::5, :], LW[::5, :]), 0)
-
+    time_var = '20240805-022342'
     direct = '../output/'+time_var
     if not os.path.exists(direct):
         os.makedirs(direct)
@@ -112,54 +109,56 @@ if __name__ == "__main__":
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         session = tf.Session(config=config)
-        # wandb.tensorflow.log(tf.summary.merge_all())  
+         
         
         direct = '../PINN_result/'+time_var
         if not os.path.exists(direct):
             os.makedirs(direct)
 
         # Provide directory (second init) for pretrained networks if you have
-        model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct)
-        # model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub,
-        #                 partDir='./partNN_float64.pickle', distDir='./distNN_float64.pickle', uvDir='uvNN_float64.pickle')
-                
-        
-        # Train the distance function
-        print('Training distance function')
-        wandb.init()
-        model.train_bfgs_dist()
-        model.save_NN('%s/distNN_float64.pickle'%(direct), TYPE='DIST')
-        model.count = 0
-        wandb.finish()
-        print()
-
-        # Train the NN for particular solution
-        print('Training particular function')
-        wandb.init()
-        model.train_bfgs_part()
-        model.save_NN('%s/partNN_float64.pickle'%(direct), TYPE='PART')
-        model.count = 0
-        wandb.finish()
-        print()
-        
-        # Train the composite network
-        start_time = time.time()
-        wandb.init()
-        print('Training General function')
-        model.train(iter=2000, learning_rate=1e-3)
-        model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
-        print('Training General function')
-        model.train(iter=2000, learning_rate=5e-4)
-        model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
-        print('Training General function')
-        model.train_bfgs()
-        model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
-        print("--- %s seconds ---" % (time.time() - start_time))
-        print()
-        # wandb.finish()
-
-        # Save the trained model
+        model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct,
+                        partDir='/partNN_float64.pickle', distDir='/distNN_float64.pickle', uvDir='/uvNN_float64.pickle_35000')
 
 
         # Check the loss for each part
         model.getloss()
+
+        # Output result at each time step
+        x_star = np.linspace(0, 0.5, 251)
+        y_star = np.linspace(0, 0.5, 251)
+        x_star, y_star = np.meshgrid(x_star, y_star)
+        x_star = x_star.flatten()[:, None]
+        y_star = y_star.flatten()[:, None]
+        dst = ((x_star - 0) ** 2 + (y_star - 0) ** 2) ** 0.5
+        x_star = x_star[dst >= 0.1]
+        y_star = y_star[dst >= 0.1]
+        x_star = x_star.flatten()[:, None]
+        y_star = y_star.flatten()[:, None]
+
+        ############################################################
+        ######### Plot the stress distr on the notch ###############
+        ############################################################
+        direct = '../results/'+time_var
+        if not os.path.exists(direct):
+            os.makedirs(direct)
+        theta = np.linspace(0.0, np.pi / 2.0, 100)
+        TIME  = [2.5, 3.75, 5.0]
+        quantity_dict = {'s11':'sigma_{11}', 's22':'sigma_{22}', 's12':'sigma_{12}'}
+        for quantity, name_quan in quantity_dict.items():
+        # for quantity_dict in QUANT:
+            # do_plot(TIME, theta, model, quantity, name_quan)
+            do_plot(TIME, theta, model, quantity, name_quan, path=direct)
+
+
+
+        direct = '../output/'+time_var
+        if not os.path.exists(direct):
+            os.makedirs(direct)
+        for i in range(N_t):
+            t_star = np.zeros((x_star.size, 1))
+            t_star.fill(i * MAX_T / (N_t - 1))
+            u_pred, v_pred, s11_pred, s22_pred, s12_pred, e11_pred, e22_pred, e12_pred = model.predict(x_star, y_star, t_star)
+            field = [x_star, y_star, t_star, u_pred, v_pred, s11_pred, s22_pred, s12_pred]
+            amp_pred = (u_pred ** 2 + v_pred ** 2) ** 0.5
+            print('Inferring for frame %s of %s'%(i, N_t))
+            postProcessDef(xmin=0, xmax=0.50, ymin=0, ymax=0.50, num=i, s=4, scale=0, field=field, path=direct)

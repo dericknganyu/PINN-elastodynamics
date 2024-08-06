@@ -1,30 +1,39 @@
 import numpy as np
 import pickle
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+
 # Setup GPU for training
 import tensorflow.compat.v1 as tf # type: ignore
 tf.disable_v2_behavior()
-import deepxde as dde
-# import tensorflow as tf
+import tensorflow as tf1
+# import deepxde as dde
 
 import os
+
+import wandb # type: ignore
+wandb.require("core")
+
+from utils import *
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 np.random.seed(1111)
 tf.set_random_seed(1111)
 
 
-tf.logging.set_verbosity(tf.logging.ERROR)
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+# tf.logging.set_verbosity(tf.logging.ERROR)
+# tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 class PINN:
     # Initialize the class
-    def __init__(self, Collo, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub,
+    def __init__(self, Collo, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct,
                  partDir='', distDir='', uvDir=''):
 
+        self.direct = direct
         # Count for callback function
         self.count = 0
-
+        self.it = 0
         # Bounds
         self.lb = lb
         self.ub = ub
@@ -91,19 +100,19 @@ class PINN:
             self.dist_weights, self.dist_biases = self.initialize_NN(self.dist_layers)
         else:
             print("Loading dist NN ...")
-            self.dist_weights, self.dist_biases = self.load_NN(distDir, self.dist_layers)
+            self.dist_weights, self.dist_biases = self.load_NN(direct+distDir, self.dist_layers)
 
         if partDir == '':
             self.part_weights, self.part_biases = self.initialize_NN(self.part_layers)
         else:
             print("Loading part NN ...")
-            self.part_weights, self.part_biases = self.load_NN(partDir, self.part_layers)
+            self.part_weights, self.part_biases = self.load_NN(direct+partDir, self.part_layers)
 
         if uvDir=='':
             self.uv_weights, self.uv_biases = self.initialize_NN(self.uv_layers)
         else:
             print("Loading uv NN ...")
-            self.uv_weights, self.uv_biases = self.load_NN(uvDir, self.uv_layers)
+            self.uv_weights, self.uv_biases = self.load_NN(direct+uvDir, self.uv_layers)
 
         # tf placeholders
         self.learning_rate = tf.placeholder(tf.float64, shape=[])
@@ -211,7 +220,8 @@ class PINN:
         self.loss = 10 * (self.loss_f_uv + self.loss_f_s + self.loss_HOLE)
 
         # Optimizer to pretrain distance func network
-        self.optimizer_dist = dde.optimizers.tensorflow_compat_v1.scipy_optimizer.ScipyOptimizerInterface(1000 * self.loss_DIST,
+        self.optimizer_dist = tf1.contrib.opt.ScipyOptimizerInterface(1000 * self.loss_DIST,
+        # self.optimizer_dist = dde.optimizers.tensorflow_compat_v1.scipy_optimizer.ScipyOptimizerInterface(1000 * self.loss_DIST,
                                                                      var_list=self.dist_weights + self.dist_biases,
                                                                      method='L-BFGS-B',
                                                                      options={'maxiter': 20000,
@@ -221,7 +231,8 @@ class PINN:
                                                                               'ftol': 0.00001 * np.finfo(float).eps})
 
         # Optimizer to pretrain particular solution network
-        self.optimizer_part = dde.optimizers.tensorflow_compat_v1.scipy_optimizer.ScipyOptimizerInterface(1000 * self.loss_PART,
+        self.optimizer_part = tf1.contrib.opt.ScipyOptimizerInterface(1000 * self.loss_PART,
+        # self.optimizer_part = dde.optimizers.tensorflow_compat_v1.scipy_optimizer.ScipyOptimizerInterface(1000 * self.loss_PART,
                                                                      var_list=self.part_weights + self.part_biases,
                                                                      method='L-BFGS-B',
                                                                      options={'maxiter': 20000,
@@ -231,7 +242,8 @@ class PINN:
                                                                               'ftol': 0.00001 * np.finfo(float).eps})
 
         # Optimizer for final solution (while the dist, particular network freezed)
-        self.optimizer = dde.optimizers.tensorflow_compat_v1.scipy_optimizer.ScipyOptimizerInterface(self.loss,
+        self.optimizer = tf1.contrib.opt.ScipyOptimizerInterface(self.loss,
+        # self.optimizer = dde.optimizers.tensorflow_compat_v1.scipy_optimizer.ScipyOptimizerInterface(self.loss,
                                                                 var_list=self.uv_weights + self.uv_biases,
                                                                 method='L-BFGS-B',
                                                                 options={'maxiter': 70000,
@@ -245,7 +257,8 @@ class PINN:
 
         # tf session
         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                                     log_device_placement=True))
+                                                     log_device_placement=True)
+        )#gpu_options = tf.GPUOptions(allow_growth=True))
         init = tf.global_variables_initializer()
         self.sess.run(init)
 
@@ -281,7 +294,7 @@ class PINN:
             pass
         with open(fileDir, 'wb') as f:
             pickle.dump([uv_weights, uv_biases], f)
-            print("Save " + TYPE + " NN parameters successfully...")
+            # print("Save " + TYPE + " NN parameters successfully...")
 
     def load_NN(self, fileDir, layers):
         weights = []
@@ -454,17 +467,55 @@ class PINN:
         ty = tf.multiply(s12, nx, name=None) + tf.multiply(s22, ny, name=None)
         return tx, ty
 
-    def callback(self, loss):
+    def callback(self, loss, loss_f_uv, loss_f_s, loss_HOLE):
         self.count = self.count + 1
-        print('{} th iterations, Loss: {}'.format(self.count, loss))
+        if self.count % 10 == 0:
+            print('Epoch %s, Loss: %.6e'%(self.count, loss))
+        wandb.log({"gen/loss_f_uv": loss_f_uv,
+                "gen/loss_f_s": loss_f_s,
+                "gen/loss_HOLE": loss_HOLE,
+                "gen/loss": loss
+                })  
+        if self.count % 1000 == 0:
+                self.save_NN('%s/uvNN_float64.pickle_%s'%(self.direct, self.it + self.count), TYPE='UV')
+                delete_files_if_exceeding_threshold(self.direct, 'uvNN_float64', threshold= 10)
 
-    def callback_dist(self, loss_dist):
+    def callback_dist(self, loss_dist, Du_dist, Dv_dist, D11_dist, D22_dist, D12_dist, Dudt_dist, Dvdt_dist):
         self.count = self.count + 1
-        print('{} th iterations, Loss: {}'.format(self.count, loss_dist))
+        if self.count % 10 == 0:
+            print('Epoch %s, Loss: %.6e'%(self.count, loss_dist))
+        wandb.log({"dist/loss": loss_dist,
+                "dist/Du": Du_dist,
+                "dist/Dv": Dv_dist,
+                "dist/D11": D11_dist,
+                "dist/D22": D22_dist,
+                "dist/D12": D12_dist,
+                "dist/Dudt": Dudt_dist,
+                "dist/Dvdt": Dvdt_dist,
+                })  
 
-    def callback_part(self, loss_part):
+    def callback_part(self, loss_part, ICu_part, ICv_part, IC11_part, IC22_part, IC12_part, ICudt_part, ICvdt_part, 
+                      LFu_part, LF12_part, RT11_part, RT12_part, LWv_part, LW12_part, UP22_part, UP12_part):
         self.count = self.count + 1
-        print('{} th iterations, Loss: {}'.format(self.count, loss_part))
+        if self.count % 10 == 0:
+            print('Epoch %s, Loss: %.6e'%(self.count, loss_part))
+        wandb.log({"part/loss": loss_part,
+                "part/ICu": ICu_part,
+                "part/ICv": ICv_part,
+                "part/IC11": IC11_part,
+                "part/IC22": IC22_part,
+                "part/IC12": IC12_part,
+                "part/ICudt": ICudt_part,
+                "part/ICvdt": ICvdt_part,
+                "part/LFu": LFu_part,
+                "part/LF12": LF12_part,
+                "part/RT11": RT11_part,
+                "part/RT12": RT12_part,
+                "part/LWv": LWv_part,
+                "part/LW12": LW12_part,
+                "part/UP22": UP22_part,
+                "part/UP12": UP12_part,
+                })  
 
     def train(self, iter, learning_rate):
 
@@ -492,12 +543,24 @@ class PINN:
             # Print
             if it % 10 == 0:
                 loss_value = self.sess.run(self.loss, tf_dict)
-                print('It: %d, Loss: %.6e' % (it, loss_value))
+                print('Epoch: %d, Loss: %.6e' % (it, loss_value))
+              
+            if it % 1000 == 0:
+                self.save_NN('%s/uvNN_float64.pickle_%s'%(self.direct, self.it), TYPE='UV')
+                delete_files_if_exceeding_threshold(self.direct, 'uvNN_float64', threshold= 10)
+
             loss_f_uv.append(self.sess.run(self.loss_f_uv, tf_dict))
             loss_f_s.append(self.sess.run(self.loss_f_s, tf_dict))
             loss_HOLE.append(self.sess.run(self.loss_HOLE, tf_dict))
             loss.append(self.sess.run(self.loss, tf_dict))
-        return loss_f_uv, loss_f_s, loss_HOLE, loss
+            # Logging with WnB
+            wandb.log({"gen/loss_f_uv": loss_f_uv[-1],
+                    "gen/loss_f_s": loss_f_s[-1],
+                    "gen/loss_HOLE": loss_HOLE[-1],
+                    "gen/loss": loss[-1]
+                    })  
+            self.it = self.it + 1
+        return loss_f_uv, loss_f_s, loss_HOLE, loss#, iter + offset + 1
 
     def train_bfgs(self):
         tf_dict = {self.x_c_tf: self.x_c, self.y_c_tf: self.y_c, self.t_c_tf: self.t_c,
@@ -515,7 +578,7 @@ class PINN:
 
         self.optimizer.minimize(self.sess,
                                 feed_dict=tf_dict,
-                                fetches=[self.loss],
+                                fetches=[self.loss, self.loss_f_uv, self.loss_f_s, self.loss_HOLE],
                                 loss_callback=self.callback)
 
     def train_bfgs_dist(self):
@@ -534,7 +597,15 @@ class PINN:
 
         self.optimizer_dist.minimize(self.sess,
                                      feed_dict=tf_dict,
-                                     fetches=[self.loss_DIST],
+                                     fetches=[self.loss_DIST,
+                                              tf.reduce_mean(tf.square(self.D_u_pred - self.u_dist_tf)),
+                                              tf.reduce_mean(tf.square(self.D_v_pred - self.v_dist_tf)),
+                                              tf.reduce_mean(tf.square(self.D_s11_pred - self.s11_dist_tf)),
+                                              tf.reduce_mean(tf.square(self.D_s22_pred - self.s22_dist_tf)),
+                                              tf.reduce_mean(tf.square(self.D_s12_pred - self.s12_dist_tf)),
+                                              tf.reduce_mean(tf.square(self.dt_D_u_pred)),
+                                              tf.reduce_mean(tf.square(self.dt_D_v_pred))
+                                              ],
                                      loss_callback=self.callback_dist)
 
     def train_bfgs_part(self):
@@ -549,7 +620,22 @@ class PINN:
 
         self.optimizer_part.minimize(self.sess,
                                      feed_dict=tf_dict,
-                                     fetches=[self.loss_PART],
+                                     fetches=[self.loss_PART,
+                                              tf.reduce_mean(tf.square(self.P_u_IC_pred)),
+                                              tf.reduce_mean(tf.square(self.P_v_IC_pred)),
+                                              tf.reduce_mean(tf.square(self.P_s11_IC_pred)),
+                                              tf.reduce_mean(tf.square(self.P_s22_IC_pred)),
+                                              tf.reduce_mean(tf.square(self.P_s12_IC_pred)),
+                                              tf.reduce_mean(tf.square(self.dt_P_u_IC_pred)),
+                                              tf.reduce_mean(tf.square(self.dt_P_v_IC_pred)),
+                                              tf.reduce_mean(tf.square(self.P_u_LF_pred)),
+                                              tf.reduce_mean(tf.square(self.P_s12_LF_pred)),
+                                              tf.reduce_mean(tf.square(self.P_s11_RT_pred - self.s11_RT_tf)),
+                                              tf.reduce_mean(tf.square(self.P_s12_RT_pred)),
+                                              tf.reduce_mean(tf.square(self.P_v_LW_pred)),
+                                              tf.reduce_mean(tf.square(self.P_s12_LW_pred)),
+                                              tf.reduce_mean(tf.square(self.P_s22_UP_pred)),
+                                              tf.reduce_mean(tf.square(self.P_s12_UP_pred))],
                                      loss_callback=self.callback_part)
 
     def predict(self, x_star, y_star, t_star):

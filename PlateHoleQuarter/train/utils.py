@@ -10,9 +10,13 @@ import matplotlib.pyplot as plt
 import scipy.io
 
 # Setup GPU for training
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+
+
 import tensorflow.compat.v1 as tf # type: ignore
 tf.disable_v2_behavior()
-# import tensorflow as tf
+import tensorflow as tf1
 
 import os
 
@@ -22,8 +26,9 @@ tf.set_random_seed(1111)
 
 
 
-tf.logging.set_verbosity(tf.logging.ERROR)
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+# tf.logging.set_verbosity(tf.logging.ERROR)
+# tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+
 # Note: TensorFlow 1.10 version is used
 
 
@@ -100,40 +105,27 @@ def postProcessDef(xmin, xmax, ymin, ymax, field, path, s=5, num=0, scale=1):
     #
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(9, 9))
     fig.subplots_adjust(hspace=0.2, wspace=0.3)
-    cf = ax[0, 0].scatter(x_pred + u_pred * scale, y_pred + v_pred * scale, c=u_pred, alpha=0.7, edgecolors='none',
-                          cmap='rainbow', marker='o', s=s, vmin=0, vmax=0.04)
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[0, 0].set_title(r'$u$-PINN', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[0, 0])
-    cbar.ax.tick_params(labelsize=14)
-    #
-    cf = ax[1, 0].scatter(x_star + u_star * scale, y_star + v_star * scale, c=u_star, alpha=0.7, edgecolors='none',
-                          cmap='rainbow', marker='o', s=2 + s, vmin=0, vmax=0.04)
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[1, 0].set_title(r'$u$-FEM', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[1, 0])
-    cbar.ax.tick_params(labelsize=14)
-    #
-    cf = ax[0, 1].scatter(x_pred + u_pred * scale, y_pred + v_pred * scale, c=v_pred, alpha=0.7, edgecolors='none',
-                          cmap='rainbow', marker='o', s=s, vmin=-0.01, vmax=0)
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[0, 1].set_title(r'$v$-PINN', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[0, 1])
-    cbar.ax.tick_params(labelsize=14)
-    #
-    cf = ax[1, 1].scatter(x_star + u_star * scale, y_star + v_star * scale, c=v_star, alpha=0.7, edgecolors='none',
-                          cmap='rainbow', marker='o', s=2 + s, vmin=-0.01, vmax=0)
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[1, 1].set_title(r'$v$-FEM', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[1, 1])
-    cbar.ax.tick_params(labelsize=14)
-    # plt.draw()
-    #
+    x_PINN = x_pred + u_pred*scale
+    y_PINN = y_pred + v_pred*scale
+    x_FEM  = x_star + u_star*scale
+    y_FEM  = y_star + v_star*scale
+
+    X_list = [x_PINN    , x_PINN    , x_FEM    , x_FEM    ]
+    Y_list = [y_PINN    , y_PINN    , y_FEM    , y_FEM    ]
+    C_list = [u_pred    , v_pred    , u_star   , v_star   ]
+    LABELS = ['$u$-PINN', '$v$-PINN', '$u$-FEM', '$v$-FEM']
+    M_SIZE = [s         , s         , 2+s         , 2+s   ]
+
     for axs in ax.flat:
+        i = 0
+        cf = axs.scatter(X_list[i], Y_list[i], c=C_list[i], alpha=0.7, edgecolors='none',
+                            cmap='rainbow', marker='o', s=M_SIZE[i], vmin=0, vmax=0.04)
+        # cf.cmap.set_under('whitesmoke')
+        # cf.cmap.set_over('black')
+        axs.set_title(r''+LABELS[i], fontsize=16)
+        cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=axs)
+        cbar.ax.tick_params(labelsize=14)
+
         axs.axis('square')
         for key, spine in axs.spines.items():
             if key in ['right', 'top', 'left', 'bottom']:
@@ -143,63 +135,29 @@ def postProcessDef(xmin, xmax, ymin, ymax, field, path, s=5, num=0, scale=1):
         axs.set_xlim([xmin, xmax])
         axs.set_ylim([ymin, ymax])
 
+        i = i+1
+
     plt.savefig('%s/uv_comparison_'%(path) + str(num) + '.png', dpi=200)
     plt.close('all')
     #
     # Plot predicted stress
     fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(15, 9))
     fig.subplots_adjust(hspace=0.15, wspace=0.3)
-    #
-    cf = ax[0, 0].scatter(x_pred + u_pred * scale, y_pred + v_pred * scale, c=s11_pred, alpha=0.7, edgecolors='none',
-                          marker='s', cmap='rainbow', s=s, vmin=0, vmax=2.5)
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[0, 0].set_title(r'$\sigma_{11}$-PINN', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[0, 0])
-    cbar.ax.tick_params(labelsize=14)
-    #
-    cf = ax[1, 0].scatter(x_star + u_star * scale, y_star + v_star * scale, c=s11_star, alpha=0.7, edgecolors='none',
-                          marker='s', cmap='rainbow', s=2 + s, vmin=0, vmax=2.5)
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[1, 0].set_title(r'$\sigma_{11}$-FEM', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[1, 0])
-    cbar.ax.tick_params(labelsize=14)
-    #
-    cf = ax[0, 1].scatter(x_pred + u_pred * scale, y_pred + v_pred * scale, c=s22_pred, alpha=0.7, edgecolors='none',
-                          marker='s', cmap='rainbow', s=s, vmin=-0.6, vmax=0.6)
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[0, 1].set_title(r'$\sigma_{22}$-PINN', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[0, 1])
-    cbar.ax.tick_params(labelsize=14)
-    #
-    cf = ax[1, 1].scatter(x_star + u_star * scale, y_star + v_star * scale, c=s22_star, alpha=0.7, edgecolors='none',
-                          marker='s', cmap='rainbow', s=2 + s, vmin=-0.6, vmax=0.6)
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[1, 1].set_title(r'$\sigma_{22}$-FEM', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[1, 1])
-    cbar.ax.tick_params(labelsize=14)
-    #
-    cf = ax[0, 2].scatter(x_pred + u_pred * scale, y_pred + v_pred * scale, c=s12_pred, alpha=0.7, edgecolors='none',
-                          marker='s', cmap='rainbow', s=s, vmin=-1, vmax=0.5)
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[0, 2].set_title(r'$\sigma_{12}$-PINN', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[0, 2])
-    cbar.ax.tick_params(labelsize=14)
-    #
-    cf = ax[1, 2].scatter(x_star + u_star * scale, y_star + v_star * scale, c=s12_star, alpha=0.7, edgecolors='none',
-                          marker='s', cmap='rainbow', s=2 + s, vmin=-1, vmax=0.5)
-
-    # cf.cmap.set_under('whitesmoke')
-    # cf.cmap.set_over('black')
-    ax[1, 2].set_title(r'$\sigma_{12}$-FEM', fontsize=16)
-    cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=ax[1, 2])
-    cbar.ax.tick_params(labelsize=14)
-    #
+    X_list = [x_PINN               , x_PINN               , x_PINN               , x_FEM                , x_FEM                , x_FEM              ]
+    Y_list = [y_PINN               , y_PINN               , y_PINN               , y_FEM                , y_FEM                , y_FEM              ]
+    C_list = [s11_pred             , s22_pred             , s12_pred             , s11_star             , s22_star             , s12_star           ]
+    LABELS = ['$\sigma_{11}$-PINN' ,'$\sigma_{22}$-PINN'  ,'$\sigma_{12}$-PINN'  , '$\sigma_{11}$-FEM'  ,'$\sigma_{22}$-FEM'   ,'$\sigma_{12}$-FEM' ]
+    M_SIZE = [s                    , s                    , s                    , 2+s                  , 2+s                  , 2+s                ]
     for axs in ax.flat:
+        i = 0
+        cf = axs.scatter(X_list[i], Y_list[i], c=C_list[i], alpha=0.7, edgecolors='none',
+                            cmap='rainbow', marker='o', s=M_SIZE[i], vmin=0, vmax=0.04)
+        # cf.cmap.set_under('whitesmoke')
+        # cf.cmap.set_over('black')
+        axs.set_title(r'$\sigma_{11}$-PINN', fontsize=16)
+        cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=axs)
+        cbar.ax.tick_params(labelsize=14)
+        
         axs.axis('square')
         for key, spine in axs.spines.items():
             if key in ['right', 'top', 'left', 'bottom']:
@@ -275,7 +233,7 @@ def do_plot(TIME, theta, model, quantity, name_quan, path):
     plt.ylabel(r'$\%s$\kPa'%(name_quan), fontsize=12)
     plt.legend(fontsize=12, frameon=False)
     plt.savefig('%s/%s_comparison.png'%(path, quantity),dpi=300)
-    plt.show()
+    # plt.show()
 
 def pts_plot(points, path):
 
@@ -320,3 +278,45 @@ def pts_plot_interactive(points, path):
 
     # Show the plot
     fig.show()
+
+from natsort import natsorted
+
+def list_filtered_files_in_directory(directory_path, filter_string):
+    # Check if the directory exists
+    if not os.path.exists(directory_path):
+        print(f"The directory {directory_path} does not exist.")
+        return []
+
+    # List all files and directories in the specified path
+    files_and_dirs = os.listdir(directory_path)
+    
+    # Filter out directories, keep only files that contain the filter string
+    filtered_files = [
+        f for f in files_and_dirs 
+        if os.path.isfile(os.path.join(directory_path, f)) and filter_string in f
+    ]
+    
+    # Sort the filtered files
+    filtered_files = natsorted(filtered_files)
+    
+    return filtered_files
+
+def delete_files_if_exceeding_threshold(directory_path, filter_string, threshold):
+    # Get the list of filtered and sorted files
+    filtered_files = list_filtered_files_in_directory(directory_path, filter_string)
+    
+    # Count the number of filtered files
+    n = len(filtered_files)
+    
+    # If the number of files exceeds the threshold m, delete the first n-m files
+    if n > threshold:
+        files_to_delete = filtered_files[:n-threshold]
+        for file in files_to_delete:
+            file_path = os.path.join(directory_path, file)
+            try:
+                os.remove(file_path)
+                print(f"Deleted file: {file_path}")
+            except Exception as e:
+                print(f"Error deleting file {file_path}: {e}")
+                
+    return filtered_files[n-threshold:] if n > threshold else filtered_files
