@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     # Add some boundary points into the collocation point set
     XYT_c = np.concatenate((XYT_c, HOLE[::4, :], LF[::5, :], RT[::5, 0:3], UP[::5, :], LW[::5, :]), 0)
-    time_var = '20240805-022342'
+    time_var = '20240806-191433'
     direct = '../output/'+time_var
     if not os.path.exists(direct):
         os.makedirs(direct)
@@ -142,12 +142,13 @@ if __name__ == "__main__":
         if not os.path.exists(direct):
             os.makedirs(direct)
         theta = np.linspace(0.0, np.pi / 2.0, 100)
-        TIME  = [2.5, 3.75, 5.0]
+        TIME  = [2.5   , 3.75   , 5.0]
+        COLOR = ['blue', 'green', 'red']
         quantity_dict = {'s11':'sigma_{11}', 's22':'sigma_{22}', 's12':'sigma_{12}'}
         for quantity, name_quan in quantity_dict.items():
         # for quantity_dict in QUANT:
             # do_plot(TIME, theta, model, quantity, name_quan)
-            do_plot(TIME, theta, model, quantity, name_quan, path=direct)
+            do_plot(TIME, theta, model, quantity, name_quan, COLOR, path=direct)
 
 
 

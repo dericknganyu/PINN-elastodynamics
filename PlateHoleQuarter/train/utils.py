@@ -67,12 +67,21 @@ def GenDist(XYT_dist):
     dist_s11 = np.zeros_like(XYT_dist[:, 0:1])
     dist_s22 = np.zeros_like(XYT_dist[:, 0:1])
     dist_s12 = np.zeros_like(XYT_dist[:, 0:1])
-    for i in range(len(XYT_dist)):
-        dist_u[i, 0] = min(XYT_dist[i][2], XYT_dist[i][0])  # min(t, x-(-0.5))
-        dist_v[i, 0] = min(XYT_dist[i][2], XYT_dist[i][1])  # min(t, sqrt((x+0.5)^2+(y+0.5)^2))
-        dist_s11[i, 0] = min(XYT_dist[i][2], 0.5 - XYT_dist[i][0])
-        dist_s22[i, 0] = min(XYT_dist[i][2], 0.5 - XYT_dist[i][1])  # min(t, 0.5-y, 0.5+y)
-        dist_s12[i, 0] = min(XYT_dist[i][2], XYT_dist[i][1], 0.5 - XYT_dist[i][1], XYT_dist[i][0], 0.5 - XYT_dist[i][0])
+    dist_u[:, 0]   = np.minimum(XYT_dist[:, 2], XYT_dist[:, 0])  # min(t, x-(-0.5))
+    dist_v[:, 0]   = np.minimum(XYT_dist[:, 2], XYT_dist[:, 1])  # min(t, sqrt((x+0.5)^2+(y+0.5)^2))
+    dist_s11[:, 0] = np.minimum(XYT_dist[:, 2], 0.5 - XYT_dist[:, 0])
+    dist_s22[:, 0] = np.minimum(XYT_dist[:, 2], 0.5 - XYT_dist[:, 1])  # min(t, 0.5-y, 0.5+y)
+    dist_s12[:, 0] = np.minimum(np.minimum(np.minimum(np.minimum(XYT_dist[:, 2], 
+                                                                 XYT_dist[:, 1]), 
+                                                      0.5 - XYT_dist[:, 1]), 
+                                           XYT_dist[:, 0]), 
+                                0.5 - XYT_dist[:, 0])
+    # for i in range(len(XYT_dist)):
+    #     dist_u[i, 0] = min(XYT_dist[i][2], XYT_dist[i][0])  # min(t, x-(-0.5))
+    #     dist_v[i, 0] = min(XYT_dist[i][2], XYT_dist[i][1])  # min(t, sqrt((x+0.5)^2+(y+0.5)^2))
+    #     dist_s11[i, 0] = min(XYT_dist[i][2], 0.5 - XYT_dist[i][0])
+    #     dist_s22[i, 0] = min(XYT_dist[i][2], 0.5 - XYT_dist[i][1])  # min(t, 0.5-y, 0.5+y)
+    #     dist_s12[i, 0] = min(XYT_dist[i][2], XYT_dist[i][1], 0.5 - XYT_dist[i][1], XYT_dist[i][0], 0.5 - XYT_dist[i][0])
     DIST = np.concatenate((XYT_dist, dist_u, dist_v, dist_s11, dist_s22, dist_s12), 1)
     return DIST
 
@@ -172,7 +181,8 @@ def postProcessDef(xmin, xmax, ymin, ymax, field, path, s=5, num=0, scale=1):
 
 def DelHolePT(XYT_c, xc=0, yc=0, r=0.1):
     # Delete points within hole
-    dst = np.array([((xyt[0] - xc) ** 2 + (xyt[1] - yc) ** 2) ** 0.5 for xyt in XYT_c])
+    # dst = np.array([((xyt[0] - xc) ** 2 + (xyt[1] - yc) ** 2) ** 0.5 for xyt in XYT_c])
+    dst = ((XYT_c[:,0] - xc) ** 2 + (XYT_c[:,1] - yc) ** 2) ** 0.5
     return XYT_c[dst > r, :]
 
 def GenHoleSurfPT(xc, yc, r, N_PT):
@@ -202,38 +212,42 @@ def getFEMsol(time):
     return x_star[mask], y_star[mask], s11_star[mask], s22_star[mask], s12_star[mask]
 
 
-def compare_plot(time, theta, model, quantity):
+def compare_plot(time, theta, model, quantity, col):
     _,      _, s11_surf, s22_surf, s12_surf = getPINNsol(time, theta, model)
     x_star, _, s11_star, s22_star, s12_star = getFEMsol(time)
 
     if quantity == 's11':
-        plt.plot(theta * 180 / np.pi, s11_surf, '-', alpha=0.8, label='t=%ss, PINN'%(time))
-        plt.scatter(np.arccos(x_star / 0.1) * 180 / np.pi, s11_star, marker='^', s=7, alpha=1, label='t=%ss, FEM'%(time))
+        plt.plot(theta * 180 / np.pi, s11_surf, '-', alpha=0.8, label='t=%ss, PINN'%(time), color=col)
+        plt.scatter(np.arccos(x_star / 0.1) * 180 / np.pi, s11_star, marker='^', s=7, alpha=1, label='t=%ss, FEM'%(time), color=col)
+        plt.ylim([-0.5, 3.5])
+        plt.yticks([0, 1, 2, 3], fontsize=11)
     if quantity == 's22':
-        plt.plot(theta * 180 / np.pi, s22_surf, '-', alpha=0.8, label='t=%ss, PINN'%(time))
-        plt.scatter(np.arccos(x_star / 0.1) * 180 / np.pi, s22_star, marker='^', s=7, alpha=1, label='t=%ss, FEM'%(time))
+        plt.plot(theta * 180 / np.pi, s22_surf, '-', alpha=0.8, label='t=%ss, PINN'%(time), color=col)
+        plt.scatter(np.arccos(x_star / 0.1) * 180 / np.pi, s22_star, marker='^', s=7, alpha=1, label='t=%ss, FEM'%(time), color=col)
+        plt.ylim([-1.5, 1.0])
+        plt.yticks([-1.5, -1.0, -0.5, 0, 0.5, 1.0], fontsize=11)
     if quantity == 's12':
-        plt.plot(theta * 180 / np.pi, s12_surf, '-', alpha=0.8, label='t=%ss, PINN'%(time))
-        plt.scatter(np.arccos(x_star / 0.1) * 180 / np.pi, s12_star, marker='^', s=7, alpha=1, label='t=%ss, FEM'%(time))
+        plt.plot(theta * 180 / np.pi, s12_surf, '-', alpha=0.8, label='t=%ss, PINN'%(time), color=col)
+        plt.scatter(np.arccos(x_star / 0.1) * 180 / np.pi, s12_star, marker='^', s=7, alpha=1, label='t=%ss, FEM'%(time), color=col)
+        plt.ylim([-1.2, 0.4])
+        plt.yticks([-1.2, -0.8, -0.4, 0, 0.4], fontsize=11)
 
 # def do_plot(TIME, theta, model, quantity_dict):
-def do_plot(TIME, theta, model, quantity, name_quan, path):
+def do_plot(TIME, theta, model, quantity, name_quan, COLOR, path):
     #
     # Plot stress distribution for s11 on circular surf
     # quantity, name_quan  = quantity_dict.items()#list(quantity_dict.items())[0]
     plt.figure(figsize=(5, 5))
-    for time in TIME:
-        compare_plot(time, theta, model, quantity)
+    for time, col in zip(TIME, COLOR):
+        compare_plot(time, theta, model, quantity, col)
 
     plt.xlim([0, 90])
     plt.xticks([0, 30, 60, 90], fontsize=11)
-    plt.ylim([-0.5, 3.5])
-    plt.yticks([0, 1, 2, 3], fontsize=11)
     plt.xlabel(r'$\theta$/degree', fontsize=12)
     plt.ylabel(r'$\%s$\kPa'%(name_quan), fontsize=12)
     plt.legend(fontsize=12, frameon=False)
     plt.savefig('%s/%s_comparison.png'%(path, quantity),dpi=300)
-    # plt.show()
+    plt.show()
 
 def pts_plot(points, path):
 

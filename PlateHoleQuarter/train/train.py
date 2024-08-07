@@ -34,10 +34,10 @@ np.random.seed(1111)
 tf.set_random_seed(1111)
 
 
-tf.get_logger().setLevel('NONE')
-tf.autograph.set_verbosity(3)
-tf.logging.set_verbosity(tf.logging.ERROR)
-tf.logging.set_verbosity(tf.logging.ERROR)
+# tf.get_logger().setLevel('NONE')
+# tf.autograph.set_verbosity(3)
+# tf.logging.set_verbosity(tf.logging.ERROR)
+# tf.logging.set_verbosity(tf.logging.ERROR)
 # tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
@@ -74,8 +74,8 @@ if __name__ == "__main__":
     IC = DelHolePT(IC, xc=0, yc=0, r=0.1)
 
     # Collocation point for equation residual
-    XYT_c = lb + (ub - lb) * lhs(3, 70000)
-    XYT_c_ref = lb + np.array([0.15, 0.15, 10.0]) * lhs(3, 40000)  # Refinement for stress concentration
+    XYT_c = lb + (ub - lb) * lhs(3, 7000)
+    XYT_c_ref = lb + np.array([0.15, 0.15, 10.0]) * lhs(3, 4000)  # Refinement for stress concentration
     XYT_c = np.concatenate((XYT_c, XYT_c_ref), 0)
     XYT_c = DelHolePT(XYT_c, xc=0, yc=0, r=0.1)
 
@@ -141,7 +141,7 @@ if __name__ == "__main__":
         model.count = 0
         wandb.finish()
         print()
-        
+
         # Train the composite network
         start_time = time.time()
         wandb.init()
