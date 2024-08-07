@@ -38,6 +38,9 @@ tf.autograph.set_verbosity(3)
 tf.logging.set_verbosity(tf.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
+time_var = '20240806-191433'
+run_suffix = "Z_end"
+run_num = 74000
 
 if __name__ == "__main__":
 
@@ -98,7 +101,7 @@ if __name__ == "__main__":
 
     # Add some boundary points into the collocation point set
     XYT_c = np.concatenate((XYT_c, HOLE[::4, :], LF[::5, :], RT[::5, 0:3], UP[::5, :], LW[::5, :]), 0)
-    time_var = '20240806-191433'
+
     direct = '../output/'+time_var
     if not os.path.exists(direct):
         os.makedirs(direct)
@@ -117,7 +120,7 @@ if __name__ == "__main__":
 
         # Provide directory (second init) for pretrained networks if you have
         model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct,
-                        partDir='/partNN_float64.pickle', distDir='/distNN_float64.pickle', uvDir='/uvNN_float64.pickle_35000')
+                        partDir='/partNN_float64.pickle', distDir='/distNN_float64.pickle', uvDir='/uvNN_float64.pickle_'+run_suffix)
 
 
         # Check the loss for each part
@@ -155,11 +158,39 @@ if __name__ == "__main__":
         direct = '../output/'+time_var
         if not os.path.exists(direct):
             os.makedirs(direct)
+            
+        # N_x = x_star.size
+        # t_star = np.linspace(0, MAX_T, N_t).reshape(-1, 1)
+        # t_star = np.repeat(t_star, N_x, axis=0)
+        # x_star = np.tile(x_star, (N_t, 1))
+        # y_star = np.tile(y_star, (N_t, 1))
+        
+        # t0 = time.time()
+        # u_pred, v_pred, s11_pred, s22_pred, s12_pred, e11_pred, e22_pred, e12_pred = model.predict(x_star, y_star, t_star)
+        # t1 = time.time()
+        # print(t1-t0)
+        # for i in range(N_t):
+        #     start = i*N_x
+        #     start  = (i+1)*N_x
+        #     field = [x_star[start:start, :], y_star[start:start, :], t_star[start:start, :], u_pred[start:start, :], v_pred[start:start, :], s11_pred[start:start, :], s22_pred[start:start, :], s12_pred[start:start, :]]
+        #     amp_pred = (u_pred ** 2 + v_pred ** 2) ** 0.5
+        #     print('Inferring for frame %s of %s'%(i, N_t))
+        #     postProcessDef(xmin=0, xmax=0.50, ymin=0, ymax=0.50, num=i, s=4, scale=0, field=field, path=direct)
+
         for i in range(N_t):
             t_star = np.zeros((x_star.size, 1))
             t_star.fill(i * MAX_T / (N_t - 1))
+            t0 = time.time()
             u_pred, v_pred, s11_pred, s22_pred, s12_pred, e11_pred, e22_pred, e12_pred = model.predict(x_star, y_star, t_star)
+            t1 = time.time()
+            print(t1-t0)
             field = [x_star, y_star, t_star, u_pred, v_pred, s11_pred, s22_pred, s12_pred]
             amp_pred = (u_pred ** 2 + v_pred ** 2) ** 0.5
             print('Inferring for frame %s of %s'%(i, N_t))
-            postProcessDef(xmin=0, xmax=0.50, ymin=0, ymax=0.50, num=i, s=4, scale=0, field=field, path=direct)
+            postProcessDef(xmin=0, xmax=0.50, ymin=0, ymax=0.50, num=i, s=4, scale=0, field=field, path=direct)    
+        
+        name = 'stress_comparison_{}.png'
+        create_gif(name, direct, 'a_'+name[0:-7]+'.gif')
+
+        name = 'uv_comparison_{}.png'
+        create_gif(name, direct, 'a_'+name[0:-7]+'.gif')

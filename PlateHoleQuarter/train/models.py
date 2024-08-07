@@ -11,6 +11,7 @@ import tensorflow as tf1
 # import deepxde as dde
 
 import os
+import time
 
 import wandb # type: ignore
 wandb.require("core")
@@ -28,12 +29,15 @@ tf.set_random_seed(1111)
 class PINN:
     # Initialize the class
     def __init__(self, Collo, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct,
-                 partDir='', distDir='', uvDir=''):
+                 partDir='', distDir='', uvDir='', run_num = 0):
 
         self.direct = direct
         # Count for callback function
         self.count = 0
         self.it = 0
+        self.t0 = 0
+        self.t1 = 0
+        self.run_num = run_num
         # Bounds
         self.lb = lb
         self.ub = ub
@@ -246,8 +250,8 @@ class PINN:
         # self.optimizer = dde.optimizers.tensorflow_compat_v1.scipy_optimizer.ScipyOptimizerInterface(self.loss,
                                                                 var_list=self.uv_weights + self.uv_biases,
                                                                 method='L-BFGS-B',
-                                                                options={'maxiter': 70000,
-                                                                         'maxfun': 70000,
+                                                                options={'maxiter': 70000,#150000,#70000,
+                                                                         'maxfun': 70000,#150000,#70000,
                                                                          'maxcor': 50,
                                                                          'maxls': 50,
                                                                          'ftol': 0.00001 * np.finfo(float).eps})
@@ -467,23 +471,26 @@ class PINN:
         ty = tf.multiply(s12, nx, name=None) + tf.multiply(s22, ny, name=None)
         return tx, ty
 
-    def callback(self, loss, loss_f_uv, loss_f_s, loss_HOLE):
+    def callback(self, loss, loss_f_uv, loss_f_s, loss_HOLE, save_fun):
         self.count = self.count + 1
+        self.t1 = time.time()
         if self.count % 10 == 0:
-            print('Epoch %s, Loss: %.6e'%(self.count, loss))
+            print('Epoch %s, Loss: %.6e in %0.3f s'%(self.count, loss, self.t1-self.t0))
         wandb.log({"gen/loss_f_uv": loss_f_uv,
                 "gen/loss_f_s": loss_f_s,
                 "gen/loss_HOLE": loss_HOLE,
                 "gen/loss": loss
                 })  
         if self.count % 1000 == 0:
-                self.save_NN('%s/uvNN_float64.pickle_%s'%(self.direct, self.it + self.count), TYPE='UV')
+                save_fun('%s/uvNN_float64.pickle_%s'%(self.direct, self.it + self.count + self.run_num), TYPE='UV')
                 delete_files_if_exceeding_threshold(self.direct, 'uvNN_float64', threshold= 10)
+        self.t0 = time.time()
 
     def callback_dist(self, loss_dist, Du_dist, Dv_dist, D11_dist, D22_dist, D12_dist, Dudt_dist, Dvdt_dist):
         self.count = self.count + 1
+        self.t1 = time.time()
         if self.count % 10 == 0:
-            print('Epoch %s, Loss: %.6e'%(self.count, loss_dist))
+            print('Epoch %s, Loss: %.6e in %0.3f s'%(self.count, loss_dist, self.t1-self.t0))
         wandb.log({"dist/loss": loss_dist,
                 "dist/Du": Du_dist,
                 "dist/Dv": Dv_dist,
@@ -493,12 +500,14 @@ class PINN:
                 "dist/Dudt": Dudt_dist,
                 "dist/Dvdt": Dvdt_dist,
                 })  
+        self.t0 = time.time() 
 
     def callback_part(self, loss_part, ICu_part, ICv_part, IC11_part, IC22_part, IC12_part, ICudt_part, ICvdt_part, 
                       LFu_part, LF12_part, RT11_part, RT12_part, LWv_part, LW12_part, UP22_part, UP12_part):
         self.count = self.count + 1
+        self.t1 = time.time()
         if self.count % 10 == 0:
-            print('Epoch %s, Loss: %.6e'%(self.count, loss_part))
+            print('Epoch %s, Loss: %.6e in %0.3f s'%(self.count, loss_part, self.t1-self.t0))
         wandb.log({"part/loss": loss_part,
                 "part/ICu": ICu_part,
                 "part/ICv": ICv_part,
@@ -515,7 +524,8 @@ class PINN:
                 "part/LW12": LW12_part,
                 "part/UP22": UP22_part,
                 "part/UP12": UP12_part,
-                })  
+                })
+        self.t0 = time.time()  
 
     def train(self, iter, learning_rate):
 
@@ -542,11 +552,13 @@ class PINN:
             self.sess.run(self.train_op_Adam, tf_dict)
             # Print
             if it % 10 == 0:
+                self.t0 = time.time()
                 loss_value = self.sess.run(self.loss, tf_dict)
-                print('Epoch: %d, Loss: %.6e' % (it, loss_value))
+                self.t1 = time.time()
+                print('Epoch: %d, Loss: %.6e in %0.3f s' % (it, loss_value, self.t1-self.t0))
               
             if it % 1000 == 0:
-                self.save_NN('%s/uvNN_float64.pickle_%s'%(self.direct, self.it), TYPE='UV')
+                self.save_NN('%s/uvNN_float64.pickle_%s'%(self.direct, self.it + self.run_num), TYPE='UV')
                 delete_files_if_exceeding_threshold(self.direct, 'uvNN_float64', threshold= 10)
 
             loss_f_uv.append(self.sess.run(self.loss_f_uv, tf_dict))
@@ -578,7 +590,7 @@ class PINN:
 
         self.optimizer.minimize(self.sess,
                                 feed_dict=tf_dict,
-                                fetches=[self.loss, self.loss_f_uv, self.loss_f_s, self.loss_HOLE],
+                                fetches=[self.loss, self.loss_f_uv, self.loss_f_s, self.loss_HOLE, self.save_NN],
                                 loss_callback=self.callback)
 
     def train_bfgs_dist(self):

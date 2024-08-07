@@ -20,14 +20,12 @@ import tensorflow as tf1
 
 import wandb # type: ignore
 wandb.require("core")
-wandb.init()
 # wandb.init(config=tf.flags.FLAGS, sync_tensorboard=True)
 
 from models import *
 from utils import *
 
 import time
-time_var = time.strftime('%Y%m%d-%H%M%S')
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 np.random.seed(1111)
@@ -41,6 +39,11 @@ tf.set_random_seed(1111)
 # tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
+time_var = '20240806-191433'
+run_suffix = "Z_end"
+run_num = 74000
+project_name = "PINN-elastodynamics-PlateHoleQuarter_train"
+run_id = "01eqf3at"
 
 if __name__ == "__main__":
 
@@ -119,43 +122,23 @@ if __name__ == "__main__":
             os.makedirs(direct)
 
         # Provide directory (second init) for pretrained networks if you have
-        model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct)
-        # model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub,
-        #                 partDir='./partNN_float64.pickle', distDir='./distNN_float64.pickle', uvDir='uvNN_float64.pickle')
-                
-        
-        # Train the distance function
-        print('Training distance function')
-        wandb.init()
-        model.train_bfgs_dist()
-        model.save_NN('%s/distNN_float64.pickle'%(direct), TYPE='DIST')
-        model.count = 0
-        wandb.finish()
-        # wandb.run.save()
-        # wandb_name = wandb.run.name
-        print()
-
-        # Train the NN for particular solution
-        print('Training particular function')
-        wandb.init()#name = wandb_name+'_Part')
-        model.train_bfgs_part()
-        model.save_NN('%s/partNN_float64.pickle'%(direct), TYPE='PART')
-        model.count = 0
-        wandb.finish()
-        print()
+        # model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct)
+        model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct,
+                        partDir='/partNN_float64.pickle', distDir='/distNN_float64.pickle', uvDir='/uvNN_float64.pickle_'+run_suffix 
+                        , run_num = run_num)
 
         # Train the composite network
         start_time = time.time()
-        wandb.init()#name = wandb_name+'_Gen')
-        print('Training General function')
-        model.train(iter=2000, learning_rate=1e-3)
-        model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
-        print('Training General function')
-        model.train(iter=2000, learning_rate=5e-4)
-        model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
+        run = wandb.init(project=project_name, id=run_id, resume="must")#name = wandb_name+'_Gen')
+        # print('Training General function')
+        # model.train(iter=2000, learning_rate=1e-3)
+        # model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
+        # print('Training General function')
+        # model.train(iter=2000, learning_rate=5e-4)
+        # model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
         print('Training General function')
         model.train_bfgs()
-        model.save_NN('%s/uvNN_float64.pickle_Z_end'%(direct), TYPE='UV')
+        model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
         print("--- %s seconds ---" % (time.time() - start_time))
         print()
         # wandb.finish()

@@ -110,7 +110,7 @@ def postProcessDef(xmin, xmax, ymin, ymax, field, path, s=5, num=0, scale=1):
     '''
     [x_star, y_star, u_star, v_star, s11_star, s22_star, s12_star] = preprocess(
         '../FEM_result/Quarter_plate_hole_dynamic/ProbeData-' + str(num) + '.mat')       # FE solution
-    [x_pred, y_pred, _, u_pred, v_pred, s11_pred, s22_pred, s12_pred] = field
+    [x_pred, y_pred, t_pred, u_pred, v_pred, s11_pred, s22_pred, s12_pred] = field
     #
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(9, 9))
     fig.subplots_adjust(hspace=0.2, wspace=0.3)
@@ -123,12 +123,14 @@ def postProcessDef(xmin, xmax, ymin, ymax, field, path, s=5, num=0, scale=1):
     Y_list = [y_PINN    , y_PINN    , y_FEM    , y_FEM    ]
     C_list = [u_pred    , v_pred    , u_star   , v_star   ]
     LABELS = ['$u$-PINN', '$v$-PINN', '$u$-FEM', '$v$-FEM']
-    M_SIZE = [s         , s         , 2+s         , 2+s   ]
-
+    M_SIZE = [s         , s         , 2+s      , 2+s      ]
+    VMIN   = [0         , -0.01     , 0        , -0.01    ]
+    VMAX   = [0.04      , 0         , 0.04     , 0        ]
+    
+    i = 0
     for axs in ax.flat:
-        i = 0
         cf = axs.scatter(X_list[i], Y_list[i], c=C_list[i], alpha=0.7, edgecolors='none',
-                            cmap='rainbow', marker='o', s=M_SIZE[i], vmin=0, vmax=0.04)
+                            cmap='rainbow', marker='o', s=M_SIZE[i], vmin=VMIN[i], vmax=VMAX[i])
         # cf.cmap.set_under('whitesmoke')
         # cf.cmap.set_over('black')
         axs.set_title(r''+LABELS[i], fontsize=16)
@@ -143,9 +145,8 @@ def postProcessDef(xmin, xmax, ymin, ymax, field, path, s=5, num=0, scale=1):
         axs.set_yticks([])
         axs.set_xlim([xmin, xmax])
         axs.set_ylim([ymin, ymax])
-
         i = i+1
-
+    plt.suptitle('t = %0.4e'%(t_pred[0,0]), fontsize=16)
     plt.savefig('%s/uv_comparison_'%(path) + str(num) + '.png', dpi=200)
     plt.close('all')
     #
@@ -157,10 +158,13 @@ def postProcessDef(xmin, xmax, ymin, ymax, field, path, s=5, num=0, scale=1):
     C_list = [s11_pred             , s22_pred             , s12_pred             , s11_star             , s22_star             , s12_star           ]
     LABELS = ['$\sigma_{11}$-PINN' ,'$\sigma_{22}$-PINN'  ,'$\sigma_{12}$-PINN'  , '$\sigma_{11}$-FEM'  ,'$\sigma_{22}$-FEM'   ,'$\sigma_{12}$-FEM' ]
     M_SIZE = [s                    , s                    , s                    , 2+s                  , 2+s                  , 2+s                ]
+    VMIN   = [0                    , -0.6                 , -1                   , 0                    , -0.6                 , -1                 ]
+    VMAX   = [2.5                  , 0.6                  , 0.5                  , 2.5                  ,  0.6                 , 0.5                ]
+    
+    i = 0
     for axs in ax.flat:
-        i = 0
         cf = axs.scatter(X_list[i], Y_list[i], c=C_list[i], alpha=0.7, edgecolors='none',
-                            cmap='rainbow', marker='o', s=M_SIZE[i], vmin=0, vmax=0.04)
+                            cmap='rainbow', marker='o', s=M_SIZE[i], vmin=VMIN[i], vmax=VMAX[i])
         # cf.cmap.set_under('whitesmoke')
         # cf.cmap.set_over('black')
         axs.set_title(r'$\sigma_{11}$-PINN', fontsize=16)
@@ -175,7 +179,9 @@ def postProcessDef(xmin, xmax, ymin, ymax, field, path, s=5, num=0, scale=1):
         axs.set_yticks([])
         axs.set_xlim([xmin, xmax])
         axs.set_ylim([ymin, ymax])
-        
+
+        i = i+1
+    plt.suptitle('t = %0.4e'%(t_pred[0,0]), fontsize=16)
     plt.savefig('%s/stress_comparison_'%(path) + str(num) + '.png', dpi=200)
     plt.close('all')
 
@@ -334,3 +340,40 @@ def delete_files_if_exceeding_threshold(directory_path, filter_string, threshold
                 print(f"Error deleting file {file_path}: {e}")
                 
     return filtered_files[n-threshold:] if n > threshold else filtered_files
+
+import imageio
+import os
+
+
+# Define the directory containing the images
+image_dir = '/path/to/your/images'  # Change this to your image directory
+output_gif = 'output.gif'
+image_pattern = 'name_{}.png'  # Adjust this pattern to match your image filenames
+
+def create_gif(image_pattern, image_dir, output_gif):
+    # Absolute path for the output gif
+    output_gif_path = os.path.join(image_dir, output_gif)
+
+    # Collect all image filenames
+    filenames = []
+    i = 0
+    while True:
+        filename = os.path.join(image_dir, image_pattern.format(i))
+        # print(filename)
+        if not os.path.exists(filename):
+            break
+        filenames.append(filename)
+        i += 1
+
+    if not filenames:
+        print("No images found with the specified pattern.")
+    else:
+        # Read images and create the GIF
+        try:
+            with imageio.get_writer(output_gif_path, mode='I', duration=0.1, loop=0) as writer:
+                for filename in filenames:
+                    image = imageio.imread(filename)
+                    writer.append_data(image)
+            print(f"GIF created and saved as {output_gif_path}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
