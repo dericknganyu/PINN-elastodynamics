@@ -251,8 +251,8 @@ class PINN:
         # self.optimizer = dde.optimizers.tensorflow_compat_v1.scipy_optimizer.ScipyOptimizerInterface(self.loss,
                                                                 var_list=self.uv_weights + self.uv_biases,
                                                                 method='L-BFGS-B',
-                                                                options={'maxiter': 70000,#150000,#70000,
-                                                                         'maxfun': 70000,#150000,#70000,
+                                                                options={'maxiter': 150000,#70000,
+                                                                         'maxfun': 150000,#70000,
                                                                          'maxcor': 50,
                                                                          'maxls': 50,
                                                                          'ftol': 0.00001 * np.finfo(float).eps})
@@ -476,7 +476,9 @@ class PINN:
         # print('heheheh', self.count)
         if self.count % 1000 == 0:
             weights, biases = get_weights_and_biases(Var, self.uv_layers)
-            fileDirect = '%s/uvNN_float64.pickle_%s'%(self.direct, self.it + self.count + self.run_num)
+            fileDirect = '%s/uvNN_float64.pickle_and_%s'%(self.direct, self.it + self.count + self.run_num)
+            weights, biases = get_weights_then_biases(Var, self.uv_layers)
+            fileDirect = '%s/uvNN_float64.pickle_then_%s'%(self.direct, self.it + self.count + self.run_num)
             with open(fileDirect, 'wb') as f:
                 pickle.dump([weights, biases], f)
                 # print(fileDirect)
@@ -570,7 +572,7 @@ class PINN:
               
             if it % 1000 == 0:
                 self.save_NN('%s/uvNN_float64.pickle_%s'%(self.direct, self.it + self.run_num), TYPE='UV')
-                delete_files_if_exceeding_threshold(self.direct, 'uvNN_float64', threshold= 10)
+                delete_files_if_exceeding_threshold(self.direct, 'uvNN_float64', threshold= 12)
 
             loss_f_uv.append(self.sess.run(self.loss_f_uv, tf_dict))
             loss_f_s.append(self.sess.run(self.loss_f_s, tf_dict))

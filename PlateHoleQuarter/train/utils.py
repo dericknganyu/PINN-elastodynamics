@@ -407,3 +407,30 @@ def get_weights_and_biases(Var, uv_layers):
         offset += num_biases
 
     return weights, biases
+
+def get_weights_then_biases(Var, uv_layers):
+    # Lists to store weights and biases
+    weights = []
+    biases = []
+
+    total_weights = sum(uv_layers[i] * uv_layers[i + 1] for i in range(len(uv_layers) - 1))
+    total_biases = sum(uv_layers[i + 1] for i in range(len(uv_layers) - 1))
+    # total_params = total_weights + total_biases
+
+    offset_weights = 0
+    offset_biases = total_weights
+
+    for i in range(len(uv_layers) - 1):
+        input_size = uv_layers[i]
+        output_size = uv_layers[i + 1]
+        
+        num_weights = input_size * output_size
+        num_biases = output_size
+        
+        layer_weights = Var[offset_weights : offset_weights + num_weights].reshape((input_size, output_size))
+        weights.append(layer_weights)
+        offset_weights += num_weights
+        
+        layer_biases = Var[offset_biases : offset_biases + num_biases]
+        biases.append(layer_biases)
+        offset_biases += num_biases

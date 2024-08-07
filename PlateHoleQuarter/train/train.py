@@ -1,4 +1,4 @@
-DEVICE = '3'
+DEVICE = '1'
 
 import numpy as np
 import time
@@ -150,10 +150,10 @@ if __name__ == "__main__":
         wandb.init()#name = wandb_name+'_Gen')
         print('Training General function')
         model.train(iter=2000, learning_rate=1e-3)
-        model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
+        model.save_NN('%s/zAdam1_uvNN_float64.pickle'%(direct), TYPE='UV')
         print('Training General function')
         model.train(iter=2000, learning_rate=5e-4)
-        model.save_NN('%s/uvNN_float64.pickle'%(direct), TYPE='UV')
+        model.save_NN('%s/zAdam2_uvNN_float64.pickle'%(direct), TYPE='UV')
         print('Training General function')
         model.train_bfgs()
         model.save_NN('%s/uvNN_float64.pickle_Z_end'%(direct), TYPE='UV')
