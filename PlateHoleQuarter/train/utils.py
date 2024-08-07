@@ -377,3 +377,33 @@ def create_gif(image_pattern, image_dir, output_gif):
             print(f"GIF created and saved as {output_gif_path}")
         except Exception as e:
             print(f"An error occurred: {e}")
+
+
+def get_weights_and_biases(Var, uv_layers):
+    # Lists to store weights and biases
+    weights = []
+    biases = []
+
+    # Offset to keep track of the current position in Var
+    offset = 0
+
+    # Iterate over each layer (except the last one, as it has no next layer)
+    for i in range(len(uv_layers) - 1):
+        input_size  = uv_layers[i]
+        output_size = uv_layers[i + 1]
+        
+        # Calculate the number of weights and biases for the current layer
+        num_weights = input_size * output_size
+        num_biases = output_size
+        
+        # Extract weights and reshape
+        layer_weights = Var[offset : offset + num_weights].reshape((input_size, output_size))
+        weights.append(layer_weights)
+        offset += num_weights
+        
+        # Extract biases
+        layer_biases = Var[offset : offset + num_biases]
+        biases.append(layer_biases)
+        offset += num_biases
+
+    return weights, biases

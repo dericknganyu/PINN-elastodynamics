@@ -34,6 +34,7 @@ class PINN:
         self.direct = direct
         # Count for callback function
         self.count = 0
+
         self.it = 0
         self.t0 = 0
         self.t1 = 0
@@ -470,8 +471,21 @@ class PINN:
         tx = tf.multiply(s11, nx, name=None) + tf.multiply(s12, ny, name=None)
         ty = tf.multiply(s12, nx, name=None) + tf.multiply(s22, ny, name=None)
         return tx, ty
+    
+    def callback_step(self, Var):
+        # print('heheheh', self.count)
+        if self.count % 1000 == 0:
+            weights, biases = get_weights_and_biases(Var, self.uv_layers)
+            fileDirect = '%s/uvNN_float64.pickle_%s'%(self.direct, self.it + self.count + self.run_num)
+            with open(fileDirect, 'wb') as f:
+                pickle.dump([weights, biases], f)
+                # print(fileDirect)
+                # print("Save uv NN parameters successfully...")
+            delete_files_if_exceeding_threshold(self.direct, 'uvNN_float64', threshold= 10)
 
-    def callback(self, loss, loss_f_uv, loss_f_s, loss_HOLE, save_fun):
+        # print(Var.shape)
+
+    def callback(self, loss, loss_f_uv, loss_f_s, loss_HOLE):
         self.count = self.count + 1
         self.t1 = time.time()
         if self.count % 10 == 0:
@@ -481,9 +495,6 @@ class PINN:
                 "gen/loss_HOLE": loss_HOLE,
                 "gen/loss": loss
                 })  
-        if self.count % 1000 == 0:
-                save_fun('%s/uvNN_float64.pickle_%s'%(self.direct, self.it + self.count + self.run_num), TYPE='UV')
-                delete_files_if_exceeding_threshold(self.direct, 'uvNN_float64', threshold= 10)
         self.t0 = time.time()
 
     def callback_dist(self, loss_dist, Du_dist, Dv_dist, D11_dist, D22_dist, D12_dist, Dudt_dist, Dvdt_dist):
@@ -590,8 +601,9 @@ class PINN:
 
         self.optimizer.minimize(self.sess,
                                 feed_dict=tf_dict,
-                                fetches=[self.loss, self.loss_f_uv, self.loss_f_s, self.loss_HOLE, self.save_NN],
-                                loss_callback=self.callback)
+                                fetches=[self.loss, self.loss_f_uv, self.loss_f_s, self.loss_HOLE],
+                                loss_callback=self.callback,
+                                step_callback=self.callback_step)
 
     def train_bfgs_dist(self):
 
