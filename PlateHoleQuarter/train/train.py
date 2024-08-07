@@ -1,3 +1,5 @@
+DEVICE = '3'
+
 import numpy as np
 import time
 from pyDOE import lhs
@@ -28,8 +30,7 @@ from utils import *
 
 import time
 time_var = time.strftime('%Y%m%d-%H%M%S')
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = DEVICE
 np.random.seed(1111)
 tf.set_random_seed(1111)
 
@@ -107,7 +108,7 @@ if __name__ == "__main__":
         os.makedirs(direct)
     pts_plot([XYT_c, IC, LW, UP, LF, RT, HOLE], direct)
     
-    with tf.device('/device:GPU:0'):      
+    with tf.device('/device:GPU:%s'%(DEVICE)):      
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
