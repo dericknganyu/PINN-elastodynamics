@@ -167,7 +167,7 @@ def postProcessDef(xmin, xmax, ymin, ymax, field, path, s=5, num=0, scale=1):
                             cmap='rainbow', marker='o', s=M_SIZE[i], vmin=VMIN[i], vmax=VMAX[i])
         # cf.cmap.set_under('whitesmoke')
         # cf.cmap.set_over('black')
-        axs.set_title(r'$\sigma_{11}$-PINN', fontsize=16)
+        axs.set_title(r''+LABELS[i], fontsize=16)
         cbar = fig.colorbar(cf, fraction=0.046, pad=0.04, ax=axs)
         cbar.ax.tick_params(labelsize=14)
         

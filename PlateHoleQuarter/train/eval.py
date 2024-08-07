@@ -38,8 +38,8 @@ tf.autograph.set_verbosity(3)
 tf.logging.set_verbosity(tf.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
-time_var = '20240806-191433'
-run_suffix = str(91000)#"Z_end"
+time_var = '20240807-201107'
+run_suffix = str(3000)#"Z_end"
 run_num = 91000
 
 if __name__ == "__main__":
