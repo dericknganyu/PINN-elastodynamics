@@ -1,3 +1,5 @@
+DEVICE = '2'
+
 import numpy as np
 import time
 from pyDOE import lhs
@@ -27,7 +29,7 @@ from utils import *
 
 import time
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = DEVICE
 np.random.seed(1111)
 tf.set_random_seed(1111)
 
@@ -39,11 +41,11 @@ tf.set_random_seed(1111)
 # tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
-time_var = '20240806-191433'
+time_var = '20240807-201107'
 run_suffix = "Z_end"
-run_num = 74000
+run_num = 4000
 project_name = "PINN-elastodynamics-PlateHoleQuarter_train"
-run_id = "01eqf3at"
+run_id = "gyeqwimv"
 
 if __name__ == "__main__":
 
@@ -110,7 +112,7 @@ if __name__ == "__main__":
         os.makedirs(direct)
     pts_plot([XYT_c, IC, LW, UP, LF, RT, HOLE], direct)
     
-    with tf.device('/device:GPU:0'):      
+    with tf.device('/device:GPU:%s'%(DEVICE)):     
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -124,7 +126,7 @@ if __name__ == "__main__":
         # Provide directory (second init) for pretrained networks if you have
         # model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct)
         model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct,
-                        partDir='/partNN_float64.pickle', distDir='/distNN_float64.pickle', uvDir='/uvNN_float64.pickle_'+run_suffix 
+                        partDir='/partNN_float64.pickle', distDir='/distNN_float64.pickle', uvDir='/uvNN_float64.pickle'#'/uvNN_float64.pickle_'+run_suffix 
                         , run_num = run_num)
 
         # Train the composite network

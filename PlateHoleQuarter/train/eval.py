@@ -38,8 +38,9 @@ tf.autograph.set_verbosity(3)
 tf.logging.set_verbosity(tf.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
-time_var = '20240807-201107'
-run_suffix = str(3000)#"Z_end"
+time_var = '20240807-202953'
+run_suffix = 6000#"Z_end"
+run_prefix = ''
 run_num = 91000
 
 if __name__ == "__main__":
@@ -120,7 +121,7 @@ if __name__ == "__main__":
 
         # Provide directory (second init) for pretrained networks if you have
         model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub, direct,
-                        partDir='/partNN_float64.pickle', distDir='/distNN_float64.pickle', uvDir='/uvNN_float64.pickle_'+run_suffix)
+                        partDir='/partNN_float64.pickle', distDir='/distNN_float64.pickle', uvDir='/%suvNN_float64.pickle_then_%s'%(run_prefix, run_suffix))
 
 
         # Check the loss for each part

@@ -434,3 +434,5 @@ def get_weights_then_biases(Var, uv_layers):
         layer_biases = Var[offset_biases : offset_biases + num_biases]
         biases.append(layer_biases)
         offset_biases += num_biases
+
+    return weights, biases
