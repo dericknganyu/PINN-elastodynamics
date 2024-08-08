@@ -251,8 +251,8 @@ class PINN:
         # self.optimizer = dde.optimizers.tensorflow_compat_v1.scipy_optimizer.ScipyOptimizerInterface(self.loss,
                                                                 var_list=self.uv_weights + self.uv_biases,
                                                                 method='L-BFGS-B',
-                                                                options={'maxiter': 70000,#150000,#70000,
-                                                                         'maxfun': 70000,#150000,#70000,
+                                                                options={'maxiter': 150000,#70000,
+                                                                         'maxfun': 150000,#70000,
                                                                          'maxcor': 50,
                                                                          'maxls': 50,
                                                                          'ftol': 0.00001 * np.finfo(float).eps})

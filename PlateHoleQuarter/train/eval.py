@@ -39,7 +39,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
 time_var = '20240807-202953'
-run_suffix = 138000#"Z_end"
+run_suffix = 154000#"Z_end"
 run_prefix = ''
 
 if __name__ == "__main__":

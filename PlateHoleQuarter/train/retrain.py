@@ -41,11 +41,11 @@ tf.set_random_seed(1111)
 # tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
-time_var = '20240807-201107'
+time_var = '20240807-202953'
 run_suffix = "Z_end"
-run_num = 4000
+run_num = 154000
 project_name = "PINN-elastodynamics-PlateHoleQuarter_train"
-run_id = "gyeqwimv"
+run_id = "ucw87gqq"
 
 if __name__ == "__main__":
 
