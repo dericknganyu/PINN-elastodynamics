@@ -97,48 +97,7 @@ def GenDist(XYT_dist, w, h):
                                 w - XYT_dist[:, 0]
                                 )
     DIST = np.concatenate((XYT_dist, dist_u, dist_v, dist_s11, dist_s22, dist_s12), 1)
-    return DIST
-    
-def GenDist_nb(XYT_dist, w, h):
-    dist_u   = np.zeros_like(XYT_dist[:, 0:1])
-    dist_v   = np.zeros_like(XYT_dist[:, 0:1])
-    dist_s11 = np.zeros_like(XYT_dist[:, 0:1])
-    dist_s22 = np.zeros_like(XYT_dist[:, 0:1])
-    dist_s12 = np.zeros_like(XYT_dist[:, 0:1])
-
-    dist_u[:, 0]   = np.minimum(np.minimum(XYT_dist[:, 2], 
-                                           XYT_dist[:, 0]
-                                           ), 
-                                np.sqrt((w-XYT_dist[:, 0])**2+(h/2-XYT_dist[:, 1])**2)
-                                )  
-    
-    dist_v[:, 0]   = np.minimum(np.minimum(np.minimum(XYT_dist[:, 2], 
-                                                      np.sqrt((w-XYT_dist[:, 0])**2+(h/2-XYT_dist[:, 1])**2)
-                                                      ), 
-                                           np.sqrt((0-XYT_dist[:, 0])**2+(0  -XYT_dist[:, 1])**2)
-                                           ),
-                                np.sqrt((0-XYT_dist[:, 0])**2+(h-XYT_dist[:, 1])**2)
-                                )  
-    
-    dist_s11[:, 0] = np.minimum(XYT_dist[:, 2], w - XYT_dist[:, 0])
-
-    dist_s22[:, 0] = np.minimum(np.minimum(XYT_dist[:, 2], 
-                                           h - XYT_dist[:, 1]
-                                           ), 
-                                XYT_dist[:, 1]
-                                )
-    
-    dist_s12[:, 0] = np.minimum(np.minimum(np.minimum(np.minimum(XYT_dist[:, 2], 
-                                                                 XYT_dist[:, 1]
-                                                                 ), 
-                                                      h - XYT_dist[:, 1]
-                                                      ), 
-                                           XYT_dist[:, 0]
-                                           ), 
-                                w - XYT_dist[:, 0]
-                                )
-    DIST = dist_u, dist_v, dist_s11, dist_s22, dist_s12
-    return DIST
+    return DIST, (dist_u, dist_v, dist_s11, dist_s22, dist_s12)
 
 def preprocess(dir):
     # dir: directory of ground truth
@@ -310,7 +269,7 @@ def do_plot(TIME, theta, model, quantity, name_quan, COLOR, path):
     plt.savefig('%s/%s_comparison.png'%(path, quantity),dpi=300)
     plt.show()
 
-def pts_plot(points, path):
+def pts_plot(points, path, track):
 
     # Visualize ALL the training points
     fig = plt.figure()
@@ -320,7 +279,7 @@ def pts_plot(points, path):
     ax.set_xlabel('X axis')
     ax.set_ylabel('Y axis')
     ax.set_zlabel('T axis')
-    plt.savefig('%s/points.png'%(path),dpi=300)
+    plt.savefig('%s/points_%s.png'%(path, track),dpi=300)
 
     plt.show()
 

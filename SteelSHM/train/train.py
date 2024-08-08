@@ -127,10 +127,15 @@ if __name__ == "__main__":
     # Add some boundary points into the collocation point set
     XYT_c = np.concatenate((XYT_c, LF[::5, :], RT[::5, :], UP[::5, :], LW[::5, :], P1[::5, 0:3], P2[::5, 0:3], P3[::5, :]), 0)
 
-    # direct = '../output/'+time_var
-    # if not os.path.exists(direct):
-    #     os.makedirs(direct)
-    # pts_plot([XYT_c, IC, LW, UP, LF, RT, P1, P2, P3], direct)
+    direct = '../output/'+time_var
+    if not os.path.exists(direct):
+        os.makedirs(direct)
+    pts_plot([XYT_c, IC, LW, UP, LF, RT, P1, P2, P3], direct, 'before_nondim')
+    x_dist, y_dist, t_dist = GenDistPt(xmin=0, xmax=w, ymin=0, ymax=h, tmin=0, tmax=T,
+                                       num=21, num_t=21)
+    XYT_dist = np.concatenate((x_dist, y_dist, t_dist), 1)
+    DIST, _ = GenDist(XYT_dist, w, h)
+    plot_distance(w, h, tmax, direct, 'before_nondim')
 
     if nondim == True:
         # Nondimensionalization parameters
@@ -156,6 +161,7 @@ if __name__ == "__main__":
 
         w /= L_star
         h /= L_star
+        T /= T_star
         tmax /= T_star
         
     else:
@@ -165,12 +171,13 @@ if __name__ == "__main__":
         S_star = 1.0
 
     
-
     # Generate distance function for spatio-temporal space
-    x_dist, y_dist, t_dist = GenDistPt(xmin=0, xmax=w, ymin=0, ymax=h, tmin=0, tmax=tmax,
+    pts_plot([XYT_c, IC, LW, UP, LF, RT, P1, P2, P3], direct, 'after_nondim')
+    x_dist, y_dist, t_dist = GenDistPt(xmin=0, xmax=w, ymin=0, ymax=h, tmin=0, tmax=T,
                                        num=21, num_t=21)
     XYT_dist = np.concatenate((x_dist, y_dist, t_dist), 1)
-    DIST = GenDist(XYT_dist, w, h)
+    DIST, _ = GenDist(XYT_dist, w, h)
+    plot_distance(w, h, tmax, direct, 'after_nondim')
     
     with tf.device('/device:GPU:%s'%(DEVICE)):      
 

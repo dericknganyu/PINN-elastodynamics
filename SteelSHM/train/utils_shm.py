@@ -1,4 +1,7 @@
 import numpy as np
+import utils
+import matplotlib.pyplot as plt
+
 
 dir_path = '/home/derick/Documents/PINNS/examples/mfl_src/'
 
@@ -48,6 +51,56 @@ def f_exc(z, t, sym=False, V=V0, f=f0, n=n0, t_tot=t_tot):
         result = hanning_windowed_sine_burst(t, V, f, t_tot)*step_fn
 
     return result
+
+def plot_distance(w, h, tmax, path, track):
+    x = np.linspace(0, w, 100)
+    z = np.linspace(0, h, 100)
+    x, z = np.meshgrid(x, z)
+
+    x = x.flatten()[:, None]
+    z = z.flatten()[:, None]
+
+    tval = tmax * 0.5 * np.ones_like(x)
+    XYT_dist = np.concatenate((x, z, tval), 1)
+
+    _, values  = utils.GenDist(XYT_dist, w, h)
+    Du_values, Dv_values, Dxx_values, Dzz_values, Dxz_values = values
+    Du_values  = Du_values.reshape(100, 100)
+    Dv_values  = Dv_values.reshape(100, 100)
+    Dxx_values = Dxx_values.reshape(100, 100)
+    Dzz_values = Dzz_values.reshape(100, 100)
+    Dxz_values = Dxz_values.reshape(100, 100)
+
+
+    cmap = 'rainbow'#'jet'#'viridis'#'turbo'
+
+    D_vals = {
+        'Dxx': Dxx_values,
+        'Dzz': Dzz_values,
+        'Dxz': Dxz_values,
+        'Du': Du_values,
+        'Dv': Dv_values,
+        'Dxv': Dv_values,
+    }
+
+    fig, axs = plt.subplots(2, 3, figsize=(18, 6), constrained_layout=True)
+
+    i = 0
+    for ax, (key, D_values) in zip(axs.flat, D_vals.items()):
+        ax.set_axis_off()
+        if i == 5:
+            continue
+        im = ax.imshow(D_values, extent=[0, w, 0, h], origin='lower', cmap=cmap, aspect='auto')
+        ax.set_xlabel('x')
+        ax.set_ylabel('z')
+        ax.set_title(f'Image plot of {key}')
+
+        # Create a colorbar with the same height as the imshow
+        cbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
+        i += 1
+
+    plt.savefig('%s/distance_fxn_%s.png'%(path, track),dpi=300)
+    plt.show()   
 
 
 # class distance_fxn():
