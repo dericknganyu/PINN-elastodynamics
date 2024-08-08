@@ -39,9 +39,8 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 # Note: TensorFlow 1.10 version is used
 
 time_var = '20240807-202953'
-run_suffix = 6000#"Z_end"
+run_suffix = 138000#"Z_end"
 run_prefix = ''
-run_num = 91000
 
 if __name__ == "__main__":
 
@@ -177,7 +176,7 @@ if __name__ == "__main__":
         #     amp_pred = (u_pred ** 2 + v_pred ** 2) ** 0.5
         #     print('Inferring for frame %s of %s'%(i, N_t))
         #     postProcessDef(xmin=0, xmax=0.50, ymin=0, ymax=0.50, num=i, s=4, scale=0, field=field, path=direct)
-
+        offset = 0.04
         for i in range(N_t):
             t_star = np.zeros((x_star.size, 1))
             t_star.fill(i * MAX_T / (N_t - 1))
@@ -188,7 +187,9 @@ if __name__ == "__main__":
             field = [x_star, y_star, t_star, u_pred, v_pred, s11_pred, s22_pred, s12_pred]
             amp_pred = (u_pred ** 2 + v_pred ** 2) ** 0.5
             print('Inferring for frame %s of %s'%(i, N_t))
-            postProcessDef(xmin=0, xmax=0.50, ymin=0, ymax=0.50, num=i, s=4, scale=0, field=field, path=direct)    
+            postProcessDef(xmin=0-offset, xmax=0.50+offset, 
+                           ymin=0-offset, ymax=0.50+offset, 
+                           num=i, s=4, scale=1, field=field, path=direct)    
         
         name = 'stress_comparison_{}.png'
         create_gif(name, direct, 'a_'+name[0:-7]+'.gif')
