@@ -475,10 +475,10 @@ class PINN:
     def callback_step(self, Var):
         # print('heheheh', self.count)
         if self.count % 1000 == 0:
-            weights, biases = get_weights_and_biases(Var, self.uv_layers)
-            fileDirect = '%s/uvNN_float64.pickle_and_%s'%(self.direct, self.it + self.count + self.run_num)
-            with open(fileDirect, 'wb') as f:
-                pickle.dump([weights, biases], f)
+            # weights, biases = get_weights_and_biases(Var, self.uv_layers)
+            # fileDirect = '%s/uvNN_float64.pickle_and_%s'%(self.direct, self.it + self.count + self.run_num)
+            # with open(fileDirect, 'wb') as f:
+            #     pickle.dump([weights, biases], f)
             weights, biases = get_weights_then_biases(Var, self.uv_layers)
             fileDirect = '%s/uvNN_float64.pickle_then_%s'%(self.direct, self.it + self.count + self.run_num)
             with open(fileDirect, 'wb') as f:
