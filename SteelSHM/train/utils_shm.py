@@ -99,7 +99,7 @@ def plot_distance(w, h, tmax, path, track):
         cbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
         i += 1
 
-    plt.savefig('%s/distance_fxn_%s.png'%(path, track),dpi=300)
+    plt.savefig('%s/distance_fxn%s.png'%(path, track),dpi=300)
     plt.show()   
 
 

@@ -125,12 +125,12 @@ if __name__ == "__main__":
     direct = '../output/'+time_var
     if not os.path.exists(direct):
         os.makedirs(direct)
-    pts_plot([XYT_c, IC, LW, UP, LF, RT, P1, P2, P3], direct, 'before_nondim')
+    pts_plot([XYT_c, IC, LW, UP, LF, RT, P1, P2, P3], direct, '')
     x_dist, y_dist, t_dist = GenDistPt(xmin=0, xmax=w, ymin=0, ymax=h, tmin=0, tmax=T,
                                        num=21, num_t=21)
     XYT_dist = np.concatenate((x_dist, y_dist, t_dist), 1)
     DIST, _ = GenDist(XYT_dist, w, h)
-    plot_distance(w, h, tmax, direct, 'before_nondim')
+    plot_distance(w, h, tmax, direct, '')
 
     if nondim == True:
         # Nondimensionalization parameters
@@ -158,21 +158,22 @@ if __name__ == "__main__":
         h /= L_star
         T /= T_star
         tmax /= T_star
+
+        # Replot non-dimensionalised points
+        pts_plot([XYT_c, IC, LW, UP, LF, RT, P1, P2, P3], direct, '_nondim')
+
+        # Generate distance function for spatio-temporal space
+        x_dist, y_dist, t_dist = GenDistPt(xmin=0, xmax=w, ymin=0, ymax=h, tmin=0, tmax=T,
+                                        num=21, num_t=21)
+        XYT_dist = np.concatenate((x_dist, y_dist, t_dist), 1)
+        DIST, _ = GenDist(XYT_dist, w, h)
+        plot_distance(w, h, tmax, direct, '_nondim')
         
     else:
         L_star = 1.0
         T_star = 1.0
         U_star = 1.0
         S_star = 1.0
-
-    
-    # Generate distance function for spatio-temporal space
-    pts_plot([XYT_c, IC, LW, UP, LF, RT, P1, P2, P3], direct, 'after_nondim')
-    x_dist, y_dist, t_dist = GenDistPt(xmin=0, xmax=w, ymin=0, ymax=h, tmin=0, tmax=T,
-                                       num=21, num_t=21)
-    XYT_dist = np.concatenate((x_dist, y_dist, t_dist), 1)
-    DIST, _ = GenDist(XYT_dist, w, h)
-    plot_distance(w, h, tmax, direct, 'after_nondim')
     
     with tf.device('/device:GPU:%s'%(DEVICE)):      
 

@@ -279,7 +279,7 @@ def pts_plot(points, path, track):
     ax.set_xlabel('X axis')
     ax.set_ylabel('Y axis')
     ax.set_zlabel('T axis')
-    plt.savefig('%s/points_%s.png'%(path, track),dpi=300)
+    plt.savefig('%s/points%s.png'%(path, track),dpi=300)
 
     plt.show()
 
