@@ -16,7 +16,7 @@ import time
 import wandb # type: ignore
 wandb.require("core")
 
-from utils import *
+from .utils import *
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 np.random.seed(1111)

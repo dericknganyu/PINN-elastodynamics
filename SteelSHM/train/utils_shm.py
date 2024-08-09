@@ -1,6 +1,6 @@
 import numpy as np
-import utils
 import matplotlib.pyplot as plt
+from .utils import *
 
 
 dir_path = '/home/derick/Documents/PINNS/examples/mfl_src/'

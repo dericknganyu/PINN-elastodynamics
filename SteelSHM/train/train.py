@@ -25,9 +25,9 @@ wandb.require("core")
 wandb.init()
 # wandb.init(config=tf.flags.FLAGS, sync_tensorboard=True)
 
-from models import *
-from utils import *
-from utils_shm import *
+from .models import *
+from .utils import *
+from .utils_shm import *
 
 import time
 time_var = time.strftime('%Y%m%d-%H%M%S')
@@ -200,7 +200,7 @@ if __name__ == "__main__":
         
         # Train the distance function
         print('Training distance function')
-        wandb.init(name=time_var+'Dist')
+        wandb.init(name=time_var+'_Dist')
         model.train_bfgs_dist()
         model.save_NN('%s/distNN_float64.pickle'%(direct), TYPE='DIST')
         model.count = 0
@@ -209,7 +209,7 @@ if __name__ == "__main__":
 
         # Train the NN for particular solution
         print('Training particular function')
-        wandb.init(name=time_var+'Part')#name = wandb_name+'_Part')
+        wandb.init(name=time_var+'_Part')#name = wandb_name+'_Part')
         model.train_bfgs_part()
         model.save_NN('%s/partNN_float64.pickle'%(direct), TYPE='PART')
         model.count = 0
@@ -218,7 +218,7 @@ if __name__ == "__main__":
 
         # Train the composite network
         start_time = time.time()
-        wandb.init(name=time_var+'Gen')#name = wandb_name+'_Gen')
+        wandb.init(name=time_var+'_Gen')#name = wandb_name+'_Gen')
         print('Training General function')
         model.train(iter=2000, learning_rate=1e-3)
         model.save_NN('%s/zAdam1_uvNN_float64.pickle'%(direct), TYPE='UV')
