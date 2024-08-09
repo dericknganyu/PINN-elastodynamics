@@ -1,4 +1,4 @@
-DEVICE = '1'
+DEVICE = '0'
 
 import numpy as np
 import time
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     IC = lb + np.array([w, h, 0.0]) * lhs(3, 5000)
 
     # Collocation point for equation residual
-    XYT_c = lb + (ub - lb) * lhs(3, 7000)
+    XYT_c = lb + (ub - lb) * lhs(3, 10000)
     
     # P1 = np.array([0, 0, 0.0])
     # P2 = np.array([0, h, 0.0])
@@ -115,11 +115,6 @@ if __name__ == "__main__":
 
     v_P1 = f_exc(P1[:,1:2], P1[:,2:3])
     v_P2 = f_exc(P2[:,1:2], P2[:,2:3])
-    # v_P3 = np.zeros_like(P1[:,1:2])
-
-    # u_P1 = np.zeros_like(P1[:,1:2])
-    # u_P2 = np.zeros_like(P2[:,1:2])
-    # u_P3 = np.zeros_like(P1[:,1:2])
 
     P1 = np.concatenate((P1, v_P1), 1)
     P2 = np.concatenate((P2, v_P2), 1)
@@ -196,14 +191,15 @@ if __name__ == "__main__":
                      lb, ub, 
                      rho, mu0, lambda0, 
                      L_star, T_star, U_star, S_star, 
-                     direct)
-        # model = PINN(XYT_c, HOLE, IC, LF, RT, UP, LW, DIST, uv_layers, dist_layers, part_layers, lb, ub,
-        #                 partDir='./partNN_float64.pickle', distDir='./distNN_float64.pickle', uvDir='uvNN_float64.pickle')
-                
+                     direct)#,
+                    #  partDir='..',
+                    #  distDir='..',
+                    #  uvDir  ='..')
+       
         
         # Train the distance function
         print('Training distance function')
-        wandb.init()
+        wandb.init(name=time_var+'Dist')
         model.train_bfgs_dist()
         model.save_NN('%s/distNN_float64.pickle'%(direct), TYPE='DIST')
         model.count = 0
@@ -212,7 +208,7 @@ if __name__ == "__main__":
 
         # Train the NN for particular solution
         print('Training particular function')
-        wandb.init()#name = wandb_name+'_Part')
+        wandb.init(name=time_var+'Part')#name = wandb_name+'_Part')
         model.train_bfgs_part()
         model.save_NN('%s/partNN_float64.pickle'%(direct), TYPE='PART')
         model.count = 0
@@ -221,13 +217,23 @@ if __name__ == "__main__":
 
         # Train the composite network
         start_time = time.time()
-        wandb.init()#name = wandb_name+'_Gen')
+        wandb.init(name=time_var+'Gen')#name = wandb_name+'_Gen')
         print('Training General function')
         model.train(iter=2000, learning_rate=1e-3)
         model.save_NN('%s/zAdam1_uvNN_float64.pickle'%(direct), TYPE='UV')
+
         print('Training General function')
         model.train(iter=2000, learning_rate=5e-4)
         model.save_NN('%s/zAdam2_uvNN_float64.pickle'%(direct), TYPE='UV')
+
+        print('Training General function')
+        model.train(iter=2000, learning_rate=1e-4)
+        model.save_NN('%s/zAdam3_uvNN_float64.pickle'%(direct), TYPE='UV')
+
+        print('Training General function')
+        model.train(iter=2000, learning_rate=5e-5)
+        model.save_NN('%s/zAdam4_uvNN_float64.pickle'%(direct), TYPE='UV')
+
         print('Training General function')
         model.train_bfgs()
         model.save_NN('%s/uvNN_float64.pickle_Z_end'%(direct), TYPE='UV')
